@@ -29,7 +29,7 @@ namespace Hangfire.Server
     public class PerformContext
     {
         internal PerformContext([NotNull] PerformContext context)
-            : this(context.Connection, context.BackgroundJob, context.CancellationToken)
+            : this(context.Connection, context.BackgroundJob, context.CancellationToken, context.Scope)
         {
             Items = context.Items;
         }
@@ -37,15 +37,19 @@ namespace Hangfire.Server
         public PerformContext(
             [NotNull] IStorageConnection connection, 
             [NotNull] BackgroundJob backgroundJob,
-            [NotNull] IJobCancellationToken cancellationToken)
+            [NotNull] IJobCancellationToken cancellationToken,
+            [NotNull] JobActivatorScope scope
+            )
         {
             if (connection == null) throw new ArgumentNullException(nameof(connection));
             if (backgroundJob == null) throw new ArgumentNullException(nameof(backgroundJob));
             if (cancellationToken == null) throw new ArgumentNullException(nameof(cancellationToken));
+            if (scope == null) throw new ArgumentNullException(nameof(scope));
 
             Connection = connection;
             BackgroundJob = backgroundJob;
             CancellationToken = cancellationToken;
+            Scope = scope;
 
             Items = new Dictionary<string, object>();
         }
@@ -72,6 +76,8 @@ namespace Hangfire.Server
 
         [NotNull]
         public IJobCancellationToken CancellationToken { get; }
+
+        public JobActivatorScope Scope { get; }
 
         [NotNull]
         public IStorageConnection Connection { get; }
