@@ -52,13 +52,14 @@ namespace Hangfire.Server
         private readonly IBackgroundJobPerformer _performer;
         private readonly IBackgroundJobStateChanger _stateChanger;
         private readonly IProfiler _profiler;
-        
+        private readonly JobActivator _activator;
+
         public Worker() : this(EnqueuedState.DefaultQueue)
         {
         }
 
         public Worker([NotNull] params string[] queues)
-            : this(queues, new BackgroundJobPerformer(), new BackgroundJobStateChanger())
+            : this(queues, new BackgroundJobPerformer(), new BackgroundJobStateChanger(), JobActivator.Current)
         {
         }
 
@@ -66,14 +67,25 @@ namespace Hangfire.Server
             [NotNull] IEnumerable<string> queues,
             [NotNull] IBackgroundJobPerformer performer, 
             [NotNull] IBackgroundJobStateChanger stateChanger)
+            : this(queues, performer, stateChanger, JobActivator.Current)
+        {
+        }
+
+        public Worker(
+            [NotNull] IEnumerable<string> queues,
+            [NotNull] IBackgroundJobPerformer performer,
+            [NotNull] IBackgroundJobStateChanger stateChanger,
+            [NotNull] JobActivator activator)
         {
             if (queues == null) throw new ArgumentNullException(nameof(queues));
             if (performer == null) throw new ArgumentNullException(nameof(performer));
             if (stateChanger == null) throw new ArgumentNullException(nameof(stateChanger));
-            
+            if (activator == null) throw new ArgumentNullException(nameof(activator));
+
             _queues = queues.ToArray();
             _performer = performer;
             _stateChanger = stateChanger;
+            _activator = activator;
             _workerId = Guid.NewGuid().ToString();
             _profiler = new SlowLogProfiler(_logger);
         }
@@ -175,8 +187,8 @@ namespace Hangfire.Server
 
             for (var retryAttempt = 0; retryAttempt < MaxStateChangeAttempts; retryAttempt++)
             {
-                try
-                {
+            try
+            {
                     return _stateChanger.ChangeState(new StateChangeContext(
                         context.Storage,
                         connection,
@@ -185,19 +197,19 @@ namespace Hangfire.Server
                         expectedStates,
                         cancellationToken,
                         _profiler));
-                }
-                catch (Exception ex)
-                {
+            }
+            catch (Exception ex)
+            {
                     _logger.DebugException(
                         String.Format("State change attempt {0} of {1} failed due to an error, see inner exception for details", retryAttempt+1, MaxStateChangeAttempts), 
                         ex);
 
                     exception = ex;
-                }
+            }
 
                 context.CancellationToken.WaitHandle.WaitOne(TimeSpan.FromSeconds(retryAttempt));
                 context.CancellationToken.ThrowIfCancellationRequested();
-            }
+        }
 
             return _stateChanger.ChangeState(new StateChangeContext(
                 context.Storage,
@@ -214,7 +226,7 @@ namespace Hangfire.Server
             try
             {
                 fetchedJob.Requeue();
-            }
+        }
             catch (Exception ex)
             {
                 _logger.WarnException($"Failed to immediately re-queue the background job '{fetchedJob.JobId}'. Next invocation may be delayed, if invisibility timeout is used", ex);
@@ -240,15 +252,20 @@ namespace Hangfire.Server
                 var backgroundJob = new BackgroundJob(jobId, jobData.Job, jobData.CreatedAt);
 
                 var jobToken = new ServerJobCancellationToken(connection, jobId, context.ServerId, _workerId, context.CancellationToken);
-                var performContext = new PerformContext(connection, backgroundJob, jobToken, _profiler);
 
-                var latency = (DateTime.UtcNow - jobData.CreatedAt).TotalMilliseconds;
-                var duration = Stopwatch.StartNew();
+                using (var scope = _activator.BeginScope(
+                    new JobActivatorContext(connection, backgroundJob, jobToken)))
+                {
+                    var performContext = new PerformContext(connection, backgroundJob, jobToken, _profiler, scope);
 
-                var result = _performer.Perform(performContext);
-                duration.Stop();
+                    var latency = (DateTime.UtcNow - jobData.CreatedAt).TotalMilliseconds;
+                    var duration = Stopwatch.StartNew();
 
-                return new SucceededState(result, (long) latency, duration.ElapsedMilliseconds);
+                    var result = _performer.Perform(performContext);
+                    duration.Stop();
+
+                    return new SucceededState(result, (long)latency, duration.ElapsedMilliseconds);
+                }
             }
             catch (JobAbortedException)
             {

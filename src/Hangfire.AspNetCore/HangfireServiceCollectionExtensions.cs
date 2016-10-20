@@ -60,8 +60,7 @@ namespace Hangfire
                 x.GetRequiredService<IJobFilterProvider>()));
 
             services.TryAddSingleton<IBackgroundJobPerformer>(x => new BackgroundJobPerformer(
-                x.GetRequiredService<IJobFilterProvider>(),
-                x.GetRequiredService<JobActivator>()));
+                x.GetRequiredService<IJobFilterProvider>()));
 
 
             // ===== Client services =====

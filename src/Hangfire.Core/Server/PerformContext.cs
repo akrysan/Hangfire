@@ -29,8 +29,10 @@ namespace Hangfire.Server
     /// </summary>
     public class PerformContext
     {
+        private readonly JobActivatorScope _scope;
+
         public PerformContext([NotNull] PerformContext context)
-            : this(context.Connection, context.BackgroundJob, context.CancellationToken, context.Profiler)
+            : this(context.Connection, context.BackgroundJob, context.CancellationToken, context.Profiler, context._scope)
         {
             Items = context.Items;
         }
@@ -39,7 +41,7 @@ namespace Hangfire.Server
             [NotNull] IStorageConnection connection,
             [NotNull] BackgroundJob backgroundJob,
             [NotNull] IJobCancellationToken cancellationToken)
-            : this(connection, backgroundJob, cancellationToken, EmptyProfiler.Instance)
+            : this(connection, backgroundJob, cancellationToken, EmptyProfiler.Instance, null)
         {
         }
 
@@ -47,17 +49,21 @@ namespace Hangfire.Server
             [NotNull] IStorageConnection connection, 
             [NotNull] BackgroundJob backgroundJob,
             [NotNull] IJobCancellationToken cancellationToken,
-            [NotNull] IProfiler profiler)
+            [NotNull] IProfiler profiler,
+            [NotNull] JobActivatorScope scope
+            )
         {
             if (connection == null) throw new ArgumentNullException(nameof(connection));
             if (backgroundJob == null) throw new ArgumentNullException(nameof(backgroundJob));
             if (cancellationToken == null) throw new ArgumentNullException(nameof(cancellationToken));
             if (profiler == null) throw new ArgumentNullException(nameof(profiler));
+            if (scope == null) throw new ArgumentNullException(nameof(scope));
 
             Connection = connection;
             BackgroundJob = backgroundJob;
             CancellationToken = cancellationToken;
             Profiler = profiler;
+            _scope = scope;
 
             Items = new Dictionary<string, object>();
         }
@@ -87,9 +93,14 @@ namespace Hangfire.Server
 
         [NotNull]
         public IStorageConnection Connection { get; }
-        
+
         [NotNull]
         internal IProfiler Profiler { get; }
+
+        public object Resolve(Type type)
+        {
+            return _scope.Resolve(type);
+        }
 
         public void SetJobParameter(string name, object value)
         {
