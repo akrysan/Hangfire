@@ -160,7 +160,7 @@ namespace Hangfire.Server
             return GetType().Name;
         }
 
-        private void TryScheduleJob(
+        protected virtual void TryScheduleJob(
             JobStorage storage,
             IStorageConnection connection, 
             string recurringJobId, 
