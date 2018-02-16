@@ -374,7 +374,37 @@ WriteLiteral("\">\r\n        </div>\r\n\r\n        <script src=\"");
             
             #line default
             #line hidden
-WriteLiteral("\"></script>\r\n    </body>\r\n</html>\r\n");
+WriteLiteral("\"></script>\r\n");
+
+
+            
+            #line 77 "..\..\Dashboard\Pages\LayoutPage.cshtml"
+         if (!string.IsNullOrWhiteSpace(CustomDashboardScriptUrl)) {
+
+            
+            #line default
+            #line hidden
+WriteLiteral("            <script src=\"");
+
+
+            
+            #line 78 "..\..\Dashboard\Pages\LayoutPage.cshtml"
+                    Write(CustomDashboardScriptUrl);
+
+            
+            #line default
+            #line hidden
+WriteLiteral("\"></script>\r\n");
+
+
+            
+            #line 79 "..\..\Dashboard\Pages\LayoutPage.cshtml"
+        }
+
+            
+            #line default
+            #line hidden
+WriteLiteral("\r\n    </body>\r\n</html>\r\n");
 
 
         }

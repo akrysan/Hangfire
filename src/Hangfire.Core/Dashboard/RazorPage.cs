@@ -59,6 +59,8 @@ namespace Hangfire.Dashboard
 
         public string RequestPath => Request.Path;
 
+        public string CustomDashboardScriptUrl { get; internal set; }
+
         /// <exclude />
         public abstract void Execute();
 
@@ -82,6 +84,7 @@ namespace Hangfire.Dashboard
             AppPath = parentPage.AppPath;
             DashboardOptions = parentPage.DashboardOptions;
             Url = parentPage.Url;
+            CustomDashboardScriptUrl = parentPage.CustomDashboardScriptUrl;
 
             GenerationTime = parentPage.GenerationTime;
             _statisticsLazy = parentPage._statisticsLazy;
@@ -97,6 +100,7 @@ namespace Hangfire.Dashboard
             AppPath = context.Options.AppPath;
             DashboardOptions = context.Options;
             Url = new UrlHelper(context);
+            CustomDashboardScriptUrl = context.Options.CustomDashboardScriptUrl;
 
             _statisticsLazy = new Lazy<StatisticsDto>(() =>
             {

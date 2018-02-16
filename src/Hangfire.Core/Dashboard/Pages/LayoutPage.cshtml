@@ -85,5 +85,9 @@
         </div>
 
         <script src="@Url.To($"/js{version.Major}{version.Minor}{version.Build}")"></script>
+        @if (!string.IsNullOrWhiteSpace(CustomDashboardScriptUrl)) {
+            <script src="@CustomDashboardScriptUrl"></script>
+        }
+
     </body>
 </html>

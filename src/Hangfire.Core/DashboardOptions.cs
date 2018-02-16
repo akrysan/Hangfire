@@ -48,5 +48,7 @@ namespace Hangfire
         public int StatsPollingInterval { get; set; }
 
         public bool DisplayStorageConnectionString { get; set; }
+
+        public string CustomDashboardScriptUrl { get; set; }
     }
 }
