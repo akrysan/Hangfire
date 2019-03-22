@@ -252,19 +252,33 @@ namespace Hangfire.Server
                 var backgroundJob = new BackgroundJob(jobId, jobData.Job, jobData.CreatedAt);
 
                 var jobToken = new ServerJobCancellationToken(connection, jobId, context.ServerId, _workerId, context.CancellationToken);
-
-                using (var scope = _activator.BeginScope(
-                    new JobActivatorContext(connection, backgroundJob, jobToken)))
+                var jobActivatorContext = new JobActivatorContext(connection, backgroundJob, jobToken);
+                var scope = _activator.BeginScope(jobActivatorContext);
+                if (scope != null)
                 {
-                    var performContext = new PerformContext(connection, backgroundJob, jobToken, _profiler, scope);
+                    using (scope)
+                    {
+                        var performContext = new PerformContext(connection, backgroundJob, jobToken, _profiler, scope);
 
-                    var latency = (DateTime.UtcNow - jobData.CreatedAt).TotalMilliseconds;
-                    var duration = Stopwatch.StartNew();
+                        var latency = (DateTime.UtcNow - jobData.CreatedAt).TotalMilliseconds;
+                        var duration = Stopwatch.StartNew();
 
-                    var result = _performer.Perform(performContext);
-                    duration.Stop();
+                        var result = _performer.Perform(performContext);
+                        duration.Stop();
 
-                    return new SucceededState(result, (long)latency, duration.ElapsedMilliseconds);
+                        return new SucceededState(result, (long)latency, duration.ElapsedMilliseconds);
+                    }
+                }
+                else
+                {
+                    if (jobActivatorContext.ReEnqueueAt.HasValue)
+                    {
+                        return new ScheduledState(jobActivatorContext.ReEnqueueAt.Value);
+                    }
+                    else
+                    {
+                        return new FailedState(new InvalidOperationException("Scope could not be started"));
+                    }
                 }
             }
             catch (JobAbortedException)

@@ -46,6 +46,8 @@ namespace Hangfire
         [NotNull]
         public IStorageConnection Connection { get; }
 
+        public DateTime? ReEnqueueAt { get; set; }
+
         public void SetJobParameter(string name, object value)
         {
             if (String.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
